@@ -1,0 +1,12 @@
+{
+  "name": "ghost-formbuilder",
+  "version": "1.0.0",
+  "description": "Ghost CMS drag-drop form builder plugin",
+  "main": "src/index.js",
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

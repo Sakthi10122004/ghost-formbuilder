@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Forms Console</title>
+<script>
+  (function() {
+    const storedTheme = localStorage.getItem('ghost-admin-theme') || localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.className = storedTheme + '-theme';
+  })();
+</script>
+<style>
+  :root, html.light-theme {
+    --bg-main: #f4f5f6;
+    --bg-card: #ffffff;
+    --border-color: #ebeef0;
+    --border-color-hover: #ced4d9;
+    --text-primary: #15171a;
+    --text-secondary: #7c8b9a;
+    --accent-blue: #0a84ff;
+    --accent-green: #30cf43;
+    --accent-red: #ff453a;
+    
+    --btn-primary-bg: #15171a;
+    --btn-primary-text: #ffffff;
+    --btn-primary-hover: #000000;
+    
+    --btn-secondary-bg: #ffffff;
+    --btn-secondary-border: #ced4d9;
+    --btn-secondary-text: #394047;
+    --btn-secondary-hover-bg: #f4f5f6;
+    
+    --btn-danger-bg: #fff1f0;
+    --btn-danger-border: #ffa39e;
+    --btn-danger-text: #ff4d4f;
+    --btn-danger-hover-bg: #ff4d4f;
+    --btn-danger-hover-text: #ffffff;
+    
+    --code-bg: #f4f5f6;
+    --pre-bg: #f8f9fa;
+    --pre-text: #097330;
+    --table-header-bg: #f9fafb;
+  }
+
+  html.dark-theme {
+    --bg-main: #101114;
+    --bg-card: #15171a;
+    --border-color: #22252a;
+    --border-color-hover: #33373d;
+    --text-primary: #fafafb;
+    --text-secondary: #7c8b9a;
+    --accent-blue: #0a84ff;
+    --accent-green: #30cf43;
+    --accent-red: #ff453a;
+    
+    --btn-primary-bg: #ffffff;
+    --btn-primary-text: #15171a;
+    --btn-primary-hover: #fafafb;
+    
+    --btn-secondary-bg: #1c1e22;
+    --btn-secondary-border: #2e3338;
+    --btn-secondary-text: #fafafb;
+    --btn-secondary-hover-bg: #2e3338;
+    
+    --btn-danger-bg: rgba(240, 82, 82, 0.1);
+    --btn-danger-border: rgba(240, 82, 82, 0.2);
+    --btn-danger-text: #f05252;
+    --btn-danger-hover-bg: #f05252;
+    --btn-danger-hover-text: #ffffff;
+    
+    --code-bg: #1c1e22;
+    --pre-bg: #101114;
+    --pre-text: #30cf43;
+    --table-header-bg: #1c1e22;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    min-height: 100vh;
+    padding: 30px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+
+  .btn {
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+
+  .btn-primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    border-color: var(--btn-primary-bg);
+  }
+  .btn-primary:hover {
+    background: var(--btn-primary-hover);
+    border-color: var(--btn-primary-hover);
+  }
+
+  .btn-success {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    border-color: var(--btn-primary-bg);
+  }
+  .btn-success:hover {
+    background: var(--btn-primary-hover);
+    border-color: var(--btn-primary-hover);
+  }
+
+  .btn-secondary {
+    background: var(--btn-secondary-bg);
+    border: 1px solid var(--btn-secondary-border);
+    color: var(--btn-secondary-text);
+  }
+  .btn-secondary:hover {
+    background: var(--btn-secondary-hover-bg);
+    border-color: var(--border-color-hover);
+  }
+
+  .btn-danger {
+    background: var(--btn-danger-bg);
+    border: 1px solid var(--btn-danger-border);
+    color: var(--btn-danger-text);
+  }
+  .btn-danger:hover {
+    background: var(--btn-danger-hover-bg);
+    color: var(--btn-danger-hover-text);
+    border-color: var(--btn-danger-hover-bg);
+  }
+
+  .view-layer {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .view-layer.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-x: auto;
+  }
+
+  .form-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+  }
+  .form-card:hover {
+    background: var(--btn-secondary-hover-bg);
+    border-color: var(--border-color-hover);
+    transform: translateY(-1px);
+  }
+
+  .form-info h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .form-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .form-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .snippet {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-family: monospace;
+    margin-top: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent-blue);
+    transition: all 0.2s ease;
+  }
+  .snippet:hover {
+    background: var(--btn-secondary-hover-bg);
+    border-color: var(--accent-blue);
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 80px 0;
+    color: var(--text-secondary);
+  }
+  .empty-state svg {
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+  }
+  .empty-state h3 {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .back-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .back-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .back-nav h2 {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .submissions-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+  }
+  .submissions-table th, .submissions-table td {
+    padding: 14px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .submissions-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--table-header-bg);
+  }
+  .submissions-table td {
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+  .submissions-table tr:hover td {
+    background: var(--btn-secondary-hover-bg);
+  }
+  .submissions-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .field-val {
+    font-weight: 400;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body class="light-theme">
+
+<!-- VIEW 1: FORMS LIST -->
+<div id="view-list" class="view-layer active">
+  <header>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <a href="/ghost/" class="btn btn-secondary" style="text-decoration: none;">← Back to Ghost Admin</a>
+      <h1>Forms Console</h1>
+    </div>
+    <button class="btn btn-primary" onclick="openBuilder()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Create new
+    </button>
+  </header>
+
+  <div class="glass-card">
+    <div id="list-container" class="form-list">
+      <div class="empty-state">Loading forms...</div>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW 2: SUBMISSIONS LOG -->
+<div id="view-submissions" class="view-layer">
+  <div class="back-nav">
+    <div class="back-nav-left">
+      <button class="btn btn-secondary" onclick="switchView('view-list')">
+        ← Back
+      </button>
+      <h2 id="submissions-title">Submissions</h2>
+    </div>
+    <div id="download-btn-container"></div>
+  </div>
+
+  <div class="glass-card">
+    <table class="submissions-table" id="submissions-table-el">
+      <thead id="submissions-header">
+        <tr>
+          <th style="width: 25%">Submitted At</th>
+          <th>Payload</th>
+        </tr>
+      </thead>
+      <tbody id="submissions-container">
+        <tr>
+          <td colspan="2" class="empty-state">Querying responses...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let currentSubmissions = [];
+let currentHeaders = [];
+let currentFormName = '';
+
+function initTheme() {
+  function applyTheme() {
+    try {
+      const storedTheme = localStorage.getItem('ghost-admin-theme') || localStorage.getItem('theme');
+      if (storedTheme === 'dark' || storedTheme === 'light') {
+        const themeClass = storedTheme + '-theme';
+        if (document.documentElement.className !== themeClass) {
+          document.documentElement.className = themeClass;
+          document.body.className = themeClass;
+        }
+        return;
+      }
+    } catch (e) {}
+
+    const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const themeClass = theme + '-theme';
+    if (document.documentElement.className !== themeClass) {
+      document.documentElement.className = themeClass;
+      document.body.className = themeClass;
+    }
+  }
+
+  applyTheme();
+  setInterval(applyTheme, 1000); // Poll for parent theme updates
+}
+document.addEventListener('DOMContentLoaded', initTheme);
+
+async function loadForms() {
+  try {
+    const forms = await fetch('/form-builder/api/forms').then(r => r.json());
+    const el = document.getElementById('list-container');
+    if (!forms.length) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>
+          <h3>No forms found</h3>
+          <p>Click "Create new" to design your first form.</p>
+        </div>`;
+      return;
+    }
+    
+    el.innerHTML = forms.map(f => `
+      <div class="form-card">
+        <div class="form-info">
+          <h3>${f.name}</h3>
+          <div class="form-meta">
+            <span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              ${f.fields.length} fields
+            </span>
+            <span>&middot;</span>
+            <span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Created ${new Date(f.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+          <div class="snippet" onclick="copySnippet('${f.id}')" title="Click to copy HTML snippet">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            &lt;div data-form-id="${f.id}"&gt;&lt;/div&gt; + Script (Ready to Paste)
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="viewResponses('${f.id}', '${f.name}')">Responses</button>
+          <button class="btn btn-secondary" onclick="editForm('${f.id}')">Edit</button>
+          <button class="btn btn-danger" onclick="deleteForm('${f.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    document.getElementById('list-container').innerHTML = `<div class="empty-state" style="color:var(--accent-red)">Error loading forms: ${err.message}</div>`;
+  }
+}
+
+function switchView(viewId) {
+  document.querySelectorAll('.view-layer').forEach(layer => {
+    layer.classList.remove('active');
+  });
+  const view = document.getElementById(viewId);
+  view.classList.add('active');
+}
+
+function openBuilder() {
+  window.location.href = '/form-builder/builder';
+}
+
+function editForm(id) {
+  window.location.href = `/form-builder/builder?id=${id}`;
+}
+
+async function deleteForm(id) {
+  if (!confirm('Are you absolutely sure you want to delete this form? All submissions will be permanently removed.')) return;
+  try {
+    await fetch(`/form-builder/api/forms/${id}`, { method: 'DELETE' });
+    loadForms();
+  } catch (err) {
+    alert('Failed to delete form: ' + err.message);
+  }
+}
+
+async function viewResponses(id, name) {
+  currentFormName = name;
+  document.getElementById('submissions-title').innerText = `Submissions for: ${name}`;
+  const container = document.getElementById('submissions-container');
+  const headerContainer = document.getElementById('submissions-header');
+  const downloadContainer = document.getElementById('download-btn-container');
+  
+  downloadContainer.innerHTML = '';
+  headerContainer.innerHTML = `<tr><th style="width:25%">Submitted At</th><th>Loading details...</th></tr>`;
+  container.innerHTML = `<tr><td colspan="2" class="empty-state">Loading submissions...</td></tr>`;
+  
+  switchView('view-submissions');
+  
+  try {
+    const res = await fetch(`/form-builder/api/submissions/${id}`).then(r => r.json());
+    currentSubmissions = res.submissions || [];
+    
+    if (!currentSubmissions.length) {
+      headerContainer.innerHTML = `<tr><th style="width:25%">Submitted At</th><th>Submissions</th></tr>`;
+      container.innerHTML = `
+        <tr>
+          <td colspan="2" class="empty-state">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <h3>No submissions yet</h3>
+            <p>Once users submit fields on your website, they will appear here.</p>
+          </td>
+        </tr>`;
+      return;
+    }
+    
+    const uniqueKeys = new Set();
+    currentSubmissions.forEach(sub => {
+      if (sub.data && typeof sub.data === 'object') {
+        Object.keys(sub.data).forEach(k => uniqueKeys.add(k));
+      }
+    });
+    
+    currentHeaders = Array.from(uniqueKeys);
+    
+    headerContainer.innerHTML = `
+      <tr>
+        <th style="width: 200px">Submitted At</th>
+        ${currentHeaders.map(h => `<th>${h}</th>`).join('')}
+      </tr>
+    `;
+    
+    container.innerHTML = currentSubmissions.map(sub => `
+      <tr>
+        <td style="color:var(--text-secondary); font-weight:500;">
+          ${new Date(sub.createdAt).toLocaleString()}
+        </td>
+        ${currentHeaders.map(h => {
+          const val = (sub.data && sub.data[h] !== undefined) ? sub.data[h] : '-';
+          return `<td class="field-val">${val}</td>`;
+        }).join('')}
+      </tr>
+    `).join('');
+    
+    downloadContainer.innerHTML = `
+      <button class="btn btn-success" onclick="triggerCSVDownload()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download CSV
+      </button>
+    `;
+  } catch (err) {
+    headerContainer.innerHTML = `<tr><th style="width:25%">Submitted At</th><th>Error</th></tr>`;
+    container.innerHTML = `<tr><td colspan="2" class="empty-state" style="color:var(--accent-red)">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function triggerCSVDownload() {
+  if (!currentSubmissions.length || !currentHeaders.length) return;
+  
+  const csvRows = [];
+  csvRows.push(['Submitted At', ...currentHeaders].map(h => `"${h.replace(/"/g, '""')}"`).join(','));
+  
+  currentSubmissions.forEach(sub => {
+    const row = [
+      new Date(sub.createdAt).toLocaleString(),
+      ...currentHeaders.map(h => {
+        const val = (sub.data && sub.data[h] !== undefined) ? String(sub.data[h]) : '';
+        return `"${val.replace(/"/g, '""')}"`;
+      })
+    ];
+    csvRows.push(row.join(','));
+  });
+  
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `submissions_${currentFormName.toLowerCase().replace(/\s+/g, '_')}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function copySnippet(id) {
+  const snippetCode = `<div data-form-id="${id}"></div>\n<script src="/form-builder/ui/embed.js" defer><\/script>`;
+  navigator.clipboard.writeText(snippetCode);
+  alert('Ready-to-paste HTML (with embed script) copied to clipboard!');
+}
+
+loadForms();
+</script>
+</body>
+</html>

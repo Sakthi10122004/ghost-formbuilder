@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Form Builder</title>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+  (function() {
+    const storedTheme = localStorage.getItem('ghost-admin-theme') || localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.className = storedTheme + '-theme';
+  })();
+</script>
+<style>
+  :root, html.light-theme {
+    --bg-main: #f4f5f6;
+    --bg-card: #ffffff;
+    --bg-secondary: #fbfbfb;
+    --border-color: #ebeef0;
+    --border-color-hover: #ced4d9;
+    --text-primary: #15171a;
+    --text-secondary: #7c8b9a;
+    --accent-blue: #0a84ff;
+    --accent-green: #30cf43;
+    --accent-red: #ff453a;
+    
+    --btn-primary-bg: #15171a;
+    --btn-primary-text: #ffffff;
+    --btn-primary-hover: #000000;
+    
+    --btn-secondary-bg: #ffffff;
+    --btn-secondary-border: #ced4d9;
+    --btn-secondary-text: #394047;
+    --btn-secondary-hover-bg: #f4f5f6;
+    
+    --btn-danger-bg: #fff1f0;
+    --btn-danger-border: #ffa39e;
+    --btn-danger-text: #ff4d4f;
+  }
+
+  html.dark-theme {
+    --bg-main: #101114;
+    --bg-card: #15171a;
+    --bg-secondary: #101114;
+    --border-color: #22252a;
+    --border-color-hover: #33373d;
+    --text-primary: #fafafb;
+    --text-secondary: #7c8b9a;
+    --accent-blue: #0a84ff;
+    --accent-green: #30cf43;
+    --accent-red: #ff453a;
+    
+    --btn-primary-bg: #ffffff;
+    --btn-primary-text: #15171a;
+    --btn-primary-hover: #fafafb;
+    
+    --btn-secondary-bg: #1c1e22;
+    --btn-secondary-border: #2e3338;
+    --btn-secondary-text: #fafafb;
+    --btn-secondary-hover-bg: #2e3338;
+    
+    --btn-danger-bg: rgba(240, 82, 82, 0.1);
+    --btn-danger-border: rgba(240, 82, 82, 0.2);
+    --btn-danger-text: #f05252;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    flex: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .btn {
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+  }
+
+  .btn-primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    border-color: var(--btn-primary-bg);
+  }
+  .btn-primary:hover {
+    background: var(--btn-primary-hover);
+    border-color: var(--btn-primary-hover);
+  }
+
+  .btn-secondary {
+    background: var(--btn-secondary-bg);
+    border: 1px solid var(--btn-secondary-border);
+    color: var(--btn-secondary-text);
+  }
+  .btn-secondary:hover {
+    background: var(--btn-secondary-hover-bg);
+    border-color: var(--border-color-hover);
+  }
+
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 260px;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border-color);
+    padding: 24px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .sidebar h3 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+  }
+
+  .widget-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .widget-chip {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: grab;
+    font-size: 13.5px;
+    font-weight: 500;
+    user-select: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .widget-chip:hover {
+    background: var(--btn-secondary-hover-bg);
+    border-color: var(--border-color-hover);
+    transform: translateX(2px);
+  }
+
+  .widget-icon {
+    font-size: 16px;
+    width: 24px;
+    height: 24px;
+    background: rgba(128, 128, 128, 0.08);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .canvas {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+  }
+
+  .canvas-inner {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .form-name-wrapper {
+    margin-bottom: 24px;
+  }
+
+  .form-name-input {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 22px;
+    font-weight: 600;
+    border: none;
+    border-bottom: 2px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    outline: none;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .form-name-input:focus {
+    border-color: var(--accent-blue);
+  }
+
+  .drop-zone {
+    min-height: 280px;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 24px;
+    position: relative;
+    transition: all 0.2s ease;
+    background: var(--bg-card);
+  }
+  .drop-zone.drag-over {
+    border-color: var(--accent-blue);
+    background: rgba(10, 132, 255, 0.03);
+  }
+
+  .field-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: move;
+    transition: all 0.2s ease;
+    animation: slideUp 0.3s ease;
+  }
+  .field-row:hover {
+    border-color: var(--border-color-hover);
+    background: var(--bg-main);
+  }
+
+  .drag-handle {
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: grab;
+  }
+
+  .field-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-label-input {
+    width: 100%;
+    border: none;
+    font-size: 14.5px;
+    font-weight: 500;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+
+  .badge-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .field-type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: rgba(128, 128, 128, 0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+  }
+
+  .field-remove {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .field-remove:hover {
+    background: rgba(255, 69, 58, 0.15);
+    color: var(--accent-red);
+  }
+
+  .placeholder {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 80px 0;
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  .field-options {
+    margin-top: 8px;
+  }
+  .field-options input {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-main);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    outline: none;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .field-options input:focus {
+    border-color: var(--accent-blue);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body class="light-theme">
+
+<header>
+  <button class="btn btn-secondary" onclick="history.back()">
+    ← Back
+  </button>
+  <h1 id="builder-header">Form Builder</h1>
+  <button class="btn btn-primary" onclick="saveForm()">
+    Save form structure
+  </button>
+</header>
+
+<div class="workspace">
+  <div class="sidebar">
+    <h3>Widgets</h3>
+    <div id="widget-list" class="widget-list"></div>
+  </div>
+  <div class="canvas">
+    <div class="canvas-inner">
+      <div class="form-name-wrapper">
+        <input class="form-name-input" id="form-name" placeholder="Name your form blueprint..." value="">
+      </div>
+      <div class="drop-zone" id="drop-zone">
+        <div class="placeholder" id="placeholder">Drag and drop widgets here from the panel</div>
+        <div id="fields-container"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WIDGETS = [
+  { type: 'text',     label: 'Text field',    icon: 'T' },
+  { type: 'email',    label: 'Email',         icon: '@' },
+  { type: 'phone',    label: 'Phone',         icon: '#' },
+  { type: 'number',   label: 'Number field',  icon: '🔢' },
+  { type: 'url',      label: 'Website URL',   icon: '🔗' },
+  { type: 'textarea', label: 'Textarea',      icon: '¶' },
+  { type: 'dropdown', label: 'Dropdown',      icon: '▾' },
+  { type: 'radio',    label: 'Radio Options', icon: '🔘' },
+  { type: 'checkbox', label: 'Checkbox',      icon: '✓' },
+];
+
+let fields = [];
+let formId = null;
+
+function initTheme() {
+  function applyTheme() {
+    try {
+      const storedTheme = localStorage.getItem('ghost-admin-theme') || localStorage.getItem('theme');
+      if (storedTheme === 'dark' || storedTheme === 'light') {
+        const themeClass = storedTheme + '-theme';
+        if (document.documentElement.className !== themeClass) {
+          document.documentElement.className = themeClass;
+          document.body.className = themeClass;
+        }
+        return;
+      }
+    } catch (e) {}
+
+    const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const themeClass = theme + '-theme';
+    if (document.documentElement.className !== themeClass) {
+      document.documentElement.className = themeClass;
+      document.body.className = themeClass;
+    }
+  }
+
+  applyTheme();
+  setInterval(applyTheme, 1000); // Poll for parent theme updates
+}
+document.addEventListener('DOMContentLoaded', initTheme);
+
+// Render widgets
+document.getElementById('widget-list').innerHTML = WIDGETS.map(w => `
+  <div class="widget-chip" draggable="true" ondragstart="onDragStart(event,'${w.type}')">
+    <span class="widget-icon">${w.icon}</span>
+    <span>${w.label}</span>
+  </div>
+`).join('');
+
+let draggingType = null;
+function onDragStart(e, type) {
+  draggingType = type;
+}
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => {
+  e.preventDefault();
+  dz.classList.add('drag-over');
+});
+dz.addEventListener('dragleave', () => {
+  dz.classList.remove('drag-over');
+});
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  if (!draggingType) return;
+  addField(draggingType);
+  draggingType = null;
+});
+
+function addField(type) {
+  const widget = WIDGETS.find(w => w.type === type);
+  fields.push({
+    id: Date.now(),
+    type,
+    label: widget.label,
+    options: '',
+    required: false,
+    min: '',
+    max: ''
+  });
+  renderFields();
+}
+
+function removeField(id) {
+  fields = fields.filter(f => f.id !== id);
+  renderFields();
+}
+
+function renderFields() {
+  const container = document.getElementById('fields-container');
+  document.getElementById('placeholder').style.display = fields.length ? 'none' : '';
+
+  container.innerHTML = fields.map(f => `
+    <div class="field-row" data-id="${f.id}">
+      <span class="drag-handle">⠿</span>
+      <div class="field-info">
+        <input class="field-label-input" value="${f.label}"
+               onchange="updateLabel(${f.id}, this.value)" placeholder="Field Label">
+        <div class="badge-container">
+          <span class="field-type-badge">${f.type}</span>
+          <label style="font-size: 11px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+            <input type="checkbox" ${f.required ? 'checked' : ''} onchange="updateRequired(${f.id}, this.checked)" style="cursor: pointer;">
+            ${f.type === 'checkbox' ? 'Must be Checked' : 'Required Field'}
+          </label>
+        </div>
+        
+        ${f.type === 'dropdown' || f.type === 'radio' ? `
+          <div class="field-options">
+            <input placeholder="Comma-separated values (e.g. Option A, Option B)" value="${f.options || ''}"
+                   onchange="updateOptions(${f.id}, this.value)">
+          </div>` : ''}
+          
+        ${f.type === 'number' ? `
+          <div style="display: flex; gap: 10px; margin-top: 8px;">
+            <input type="number" placeholder="Min value validation" value="${f.min !== undefined ? f.min : ''}" 
+                   onchange="updateMin(${f.id}, this.value)" 
+                   style="width: 50%; border: 1px solid var(--border-color); background: var(--bg-main); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: var(--text-primary); outline: none;">
+            <input type="number" placeholder="Max value validation" value="${f.max !== undefined ? f.max : ''}" 
+                   onchange="updateMax(${f.id}, this.value)" 
+                   style="width: 50%; border: 1px solid var(--border-color); background: var(--bg-main); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: var(--text-primary); outline: none;">
+          </div>` : ''}
+      </div>
+      <button class="field-remove" onclick="removeField(${f.id})">✕</button>
+    </div>
+  `).join('');
+
+  // Enable sortable reordering
+  Sortable.create(container, {
+    animation: 150,
+    handle: '.drag-handle',
+    onEnd: (e) => {
+      const moved = fields.splice(e.oldIndex, 1)[0];
+      fields.splice(e.newIndex, 0, moved);
+    }
+  });
+}
+
+function updateLabel(id, value) {
+  fields = fields.map(f => f.id === id ? { ...f, label: value } : f);
+}
+
+function updateRequired(id, value) {
+  fields = fields.map(f => f.id === id ? { ...f, required: value } : f);
+}
+
+function updateOptions(id, value) {
+  fields = fields.map(f => f.id === id ? { ...f, options: value } : f);
+}
+
+function updateMin(id, value) {
+  fields = fields.map(f => f.id === id ? { ...f, min: value } : f);
+}
+
+function updateMax(id, value) {
+  fields = fields.map(f => f.id === id ? { ...f, max: value } : f);
+}
+
+async function saveForm() {
+  const name = document.getElementById('form-name').value.trim();
+  if (!name) {
+    alert('Please provide a form name.');
+    return;
+  }
+  if (!fields.length) {
+    alert('Please add at least one widget.');
+    return;
+  }
+
+  const body = { name, fields };
+  const method = formId ? 'PUT' : 'POST';
+  const url = formId ? `/form-builder/api/forms/${formId}` : '/form-builder/api/forms';
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+
+    if (res.id) {
+      alert('Form template saved successfully!');
+      window.location.href = '/form-builder/';
+    } else {
+      alert('Error saving form: ' + (res.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Failed to save form structure: ' + err.message);
+  }
+}
+
+async function init() {
+  const params = new URLSearchParams(location.search);
+  formId = params.get('id');
+  if (!formId) return;
+
+  document.getElementById('builder-header').innerText = 'Modify Form Blueprint';
+
+  try {
+    const form = await fetch(`/form-builder/api/forms/${formId}`).then(r => r.json());
+    document.getElementById('form-name').value = form.name;
+    // Map items using unique Date.now IDs to ensure no duplicates in the DOM
+    fields = form.fields.map((f, i) => ({ 
+      ...f, 
+      id: Date.now() + i,
+      min: f.min !== undefined ? f.min : '',
+      max: f.max !== undefined ? f.max : ''
+    }));
+    renderFields();
+  } catch (err) {
+    alert('Failed to load blueprint: ' + err.message);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

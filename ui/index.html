@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FormBuilder Workspace</title>
+    <style>
+        :root {
+            --bg-glass: rgba(255, 255, 255, 0.06);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --text-main: #f5f5f7;
+            --accent-green: #30d158;
+            --accent-blue: #0a84ff;
+            --accent-red: #ff453a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1c1c1e;
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+        }
+
+        /* View Layer Controller States */
+        .view-layer { display: none; }
+        .view-layer.active { display: block; }
+
+        /* Premium Frosted Glass Components */
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 16px;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 16px;
+        }
+
+        .btn {
+            background: var(--accent-blue);
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); }
+        .btn-success { background: var(--accent-green); }
+        .btn-danger { background: var(--accent-red); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        /* Layout Grid for Screen 2 (Builder) */
+        .builder-workspace {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .tool-pallet { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; }
+        .canvas-area { background: rgba(255,255,255,0.02); min-height: 300px; border: 2px dashed var(--border-glass); border-radius: 8px; padding: 16px; }
+    </style>
+</head>
+<body>
+
+    <div id="screen-home" class="view-layer active">
+        <div class="header-bar">
+            <h2>Form Transports & Schemas</h2>
+            <button class="btn btn-success" onclick="openBuilder(null)">+ Create New Form</button>
+        </div>
+        
+        <div class="glass-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Form Identity Handle</th>
+                        <th>Display Title</th>
+                        <th>Date Registered</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="forms-table-body">
+                    <tr>
+                        <td><code>contact-us</code></td>
+                        <td>Main Contact Form</td>
+                        <td>2026-06-02</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="openBuilder('contact-us')">Edit Layout</button>
+                            <button class="btn" onclick="openResponses('contact-us')">View Responses</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="screen-builder" class="view-layer">
+        <div class="header-bar">
+            <div>
+                <button class="btn btn-secondary" onclick="switchView('screen-home')">◀ Back to Dashboard</button>
+                <span id="builder-title-badge" style="margin-left: 16px; font-weight: bold; font-size: 1.2em;">New Layout Matrix</span>
+            </div>
+            <button class="btn btn-success" onclick="saveActiveForm()">Save Form Structure</button>
+        </div>
+
+        <div class="builder-workspace">
+            <div class="tool-pallet">
+                <h3>Form Elements</h3>
+                <p>📍 Short Text Input</p>
+                <p>📍 Email Field</p>
+                <p>📍 Message Box Block</p>
+            </div>
+            <div class="canvas-area" id="drop-canvas">
+                <p style="color: gray; text-align: center; margin-top: 100px;">Drag interface attributes here to assemble</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-responses" class="view-layer">
+        <div class="header-bar">
+            <button class="btn btn-secondary" onclick="switchView('screen-home')">◀ Back to Dashboard</button>
+            <h3 id="responses-title-badge">Inbound Response Logs: None</h3>
+        </div>
+
+        <div class="glass-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp Reference</th>
+                        <th>Submitted Dataset Payload</th>
+                    </tr>
+                </thead>
+                <tbody id="submissions-table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Centralized View State Toggler
+        function switchView(screenId) {
+            document.querySelectorAll('.view-layer').forEach(layer => {
+                layer.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Initialize Builder Configuration Context
+        function openBuilder(formId) {
+            const titleBadge = document.getElementById('builder-title-badge');
+            if (formId) {
+                titleBadge.innerText = `Modifying Structural Layout: ${formId}`;
+                // TODO: Run a fetch against `/formbuilder/api/forms` and compile fields into your canvas
+            } else {
+                titleBadge.innerText = "Creating Brand New Blueprint Layout";
+                document.getElementById('drop-canvas').innerHTML = ''; // Wipes the workspace clean
+            }
+            switchView('screen-builder');
+        }
+
+        // Initialize Response Viewer Layout Engine
+        async function openResponses(formId) {
+            document.getElementById('responses-title-badge').innerText = `Inbound Response Logs: [${formId}]`;
+            const tbody = document.getElementById('submissions-table-body');
+            tbody.innerHTML = '<tr><td colspan="2">Querying system database records...</td></tr>';
+            
+            switchView('screen-responses');
+
+            try {
+                const response = await fetch(`/formbuilder/api/submissions/${formId}`);
+                const data = await response.json();
+                
+                tbody.innerHTML = '';
+                if(data.submissions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">No submissions recorded for this form yet.</td></tr>';
+                    return;
+                }
+
+                data.submissions.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><code>${new Date(row.created_at).toLocaleString()}</code></td>
+                        <td><pre style="margin:0; color:#30d158;">${JSON.stringify(JSON.parse(row.data), null, 2)}</pre></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="2" style="color:var(--accent-red);">Failed to retrieve database rows.</td></tr>';
+            }
+        }
+
+        function saveActiveForm() {
+            // Your API save pipeline script goes here
+            alert('Schema layout pushed through the storage pipeline!');
+            switchView('screen-home');
+        }
+    </script>
+</body>
+</html>
