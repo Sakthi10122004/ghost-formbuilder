@@ -50,7 +50,8 @@ router.get('/api/forms', requireAdminAuth, async (_, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/api/forms/:id', requireAdminAuth, async (req, res) => {
+// Public: allow embed.js to fetch form blueprint schema to render it on posts
+router.get('/api/forms/:id', async (req, res) => {
   try { res.json(await formStore.getForm(req.params.id)); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
