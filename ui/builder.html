@@ -350,7 +350,7 @@
 <body class="light-theme">
 
 <header>
-  <button class="btn btn-secondary" onclick="history.back()">
+  <button class="btn btn-secondary" onclick="goBack()">
     ← Back
   </button>
   <h1 id="builder-header">Form Builder</h1>
@@ -550,7 +550,7 @@ async function saveForm() {
 
   const body = { name, fields };
   const method = formId ? 'PUT' : 'POST';
-  const url = formId ? `/form-builder/api/forms/${formId}` : '/form-builder/api/forms';
+  const url = formId ? `/ghost/form-builder/api/forms/${formId}` : '/ghost/form-builder/api/forms';
 
   try {
     const res = await fetch(url, {
@@ -561,12 +561,20 @@ async function saveForm() {
 
     if (res.id) {
       alert('Form template saved successfully!');
-      window.location.href = '/form-builder/';
+      goBack();
     } else {
       alert('Error saving form: ' + (res.error || 'Unknown error'));
     }
   } catch (err) {
     alert('Failed to save form structure: ' + err.message);
+  }
+}
+
+function goBack() {
+  if (window.parent && window.parent !== window) {
+    window.parent.location.hash = '#/form-builder';
+  } else {
+    window.location.href = '/ghost/form-builder/';
   }
 }
 
@@ -578,7 +586,7 @@ async function init() {
   document.getElementById('builder-header').innerText = 'Modify Form Blueprint';
 
   try {
-    const form = await fetch(`/form-builder/api/forms/${formId}`).then(r => r.json());
+    const form = await fetch(`/ghost/form-builder/api/forms/${formId}`).then(r => r.json());
     document.getElementById('form-name').value = form.name;
     // Map items using unique Date.now IDs to ensure no duplicates in the DOM
     fields = form.fields.map((f, i) => ({ 

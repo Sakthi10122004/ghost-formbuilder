@@ -23,9 +23,14 @@ module.exports = {
 
         // 1. Create internal Express app for our routes
         const internalApp = express();
+        internalApp.use('/ghost/form-builder', router);
         internalApp.use('/form-builder', router);
+        
+        // Serve UI assets from both paths
+        internalApp.use('/ghost/form-builder/ui', express.static(path.join(__dirname, '../ui')));
         internalApp.use('/form-builder/ui', express.static(path.join(__dirname, '../ui')));
-        internalApp.get('/form-builder/inject.js', (req, res) => {
+        
+        internalApp.get('/ghost/form-builder/inject.js', (req, res) => {
             res.setHeader('Content-Type', 'application/javascript');
             res.sendFile(path.join(__dirname, 'frontend-inject.js'));
         });
@@ -34,8 +39,8 @@ module.exports = {
         const originalEmit = http.Server.prototype.emit;
         http.Server.prototype.emit = function (type, req, res) {
             if (type === 'request' && req.url) {
-                // Route /form-builder/* to our internal app
-                if (req.url.startsWith('/form-builder')) {
+                // Route /ghost/form-builder/* and /form-builder/* to our internal app
+                if (req.url.startsWith('/ghost/form-builder') || req.url.startsWith('/form-builder')) {
                     internalApp(req, res);
                     return true;
                 }
@@ -45,9 +50,9 @@ module.exports = {
                 if (adminHtmlPath && (req.url === '/ghost/' || req.url === '/ghost')) {
                     try {
                         let html = fs.readFileSync(adminHtmlPath, 'utf8');
-                        const scriptTag = `<script src="/form-builder/inject.js" defer></script>`;
+                        const scriptTag = `<script src="/ghost/form-builder/inject.js" defer></script>`;
 
-                        if (!html.includes('/form-builder/inject.js')) {
+                        if (!html.includes('/ghost/form-builder/inject.js')) {
                             html = html.replace('</head>', `  ${scriptTag}\n  </head>`);
                         }
 
