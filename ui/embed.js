@@ -37,7 +37,12 @@
           box-sizing: border-box;
         `;
         
-        formEl.innerHTML = form.fields.map(f => buildField(f)).join('') + `
+        formEl.innerHTML = `
+          <div class="fb-error-banner" style="display: none; padding: 12px 16px; border-radius: 8px; background: #fff2f2; border: 1px solid #ffc9c9; color: #ff3b30; font-size: 13.5px; font-weight: 500; margin-bottom: 16px; align-items: center; gap: 10px; box-sizing: border-box; font-family: inherit; animation: fbFadeIn 0.3s ease;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff3b30" stroke-width="2.5" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span class="fb-error-text"></span>
+          </div>
+        ` + form.fields.map(f => buildField(f)).join('') + `
           <button type="submit"
             style="
               padding: 12px 24px;
@@ -63,8 +68,21 @@
 
         formEl.addEventListener('submit', async (e) => {
           e.preventDefault();
-          const data = {};
           
+          const errorBanner = formEl.querySelector('.fb-error-banner');
+          const errorText = formEl.querySelector('.fb-error-text');
+          if (errorBanner) {
+            errorBanner.style.display = 'none';
+          }
+          
+          const submitBtn = formEl.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.6';
+            submitBtn.textContent = 'Submitting...';
+          }
+
+          const data = {};
           // Fetch fields dynamically
           const formData = new FormData(formEl);
           for (const [key, value] of formData.entries()) {
@@ -88,10 +106,26 @@
                   <p style="color:#7c8b9a; font-size:14px; margin:0;">Thank you! Your information has been logged successfully.</p>
                 </div>`;
             } else {
-              alert('Error submitting form: ' + (submitRes.error || 'Unknown error'));
+              if (errorBanner && errorText) {
+                errorText.textContent = 'Error submitting form: ' + (submitRes.error || 'Unknown error');
+                errorBanner.style.display = 'flex';
+              }
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.textContent = 'Submit Response';
+              }
             }
           } catch (err) {
-            alert('Failed to submit form: ' + err.message);
+            if (errorBanner && errorText) {
+              errorText.textContent = 'Failed to submit form: ' + err.message;
+              errorBanner.style.display = 'flex';
+            }
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.style.opacity = '1';
+              submitBtn.textContent = 'Submit Response';
+            }
           }
         });
 

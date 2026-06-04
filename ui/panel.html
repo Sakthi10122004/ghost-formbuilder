@@ -380,6 +380,81 @@ let currentSubmissions = [];
 let currentHeaders = [];
 let currentFormName = '';
 
+function showToast(message, type = 'success') {
+  if (!document.getElementById('fb-toast-style')) {
+    const style = document.createElement('style');
+    style.id = 'fb-toast-style';
+    style.textContent = `
+      .fb-toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 10000000;
+        pointer-events: none;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      .fb-toast {
+        min-width: 250px;
+        padding: 12px 18px;
+        border-radius: 6px;
+        background: var(--bg-card, #ffffff);
+        color: var(--text-primary, #15171a);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0,0,0,0.02);
+        border: 1px solid var(--border-color, #ebeef0);
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        pointer-events: auto;
+        animation: fbToastFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1), fbToastFadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) 2.7s forwards;
+      }
+      .fb-toast.fb-toast-error {
+        border-left: 4px solid var(--accent-red, #ff453a);
+      }
+      .fb-toast.fb-toast-success {
+        border-left: 4px solid var(--accent-green, #30cf43);
+      }
+      @keyframes fbToastFadeIn {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes fbToastFadeOut {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(-20px); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  let container = document.querySelector('.fb-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'fb-toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `fb-toast fb-toast-${type}`;
+  
+  const icon = type === 'success' ? 
+    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green, #30cf43)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>` :
+    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red, #ff453a)" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+
+  toast.innerHTML = `${icon}<span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+    if (container.children.length === 0) {
+      container.remove();
+    }
+  }, 3000);
+}
+
 function initTheme() {
   function applyTheme() {
     try {
@@ -490,8 +565,9 @@ async function deleteForm(id) {
   try {
     await fetch(`/ghost/form-builder/api/forms/${id}`, { method: 'DELETE' });
     loadForms();
+    showToast('Form successfully deleted!', 'success');
   } catch (err) {
-    alert('Failed to delete form: ' + err.message);
+    showToast('Failed to delete form: ' + err.message, 'error');
   }
 }
 
@@ -596,7 +672,7 @@ function triggerCSVDownload() {
 function copySnippet(id) {
   const snippetCode = `<div data-form-id="${id}"></div>\n<script src="/form-builder/ui/embed.js" defer><\/script>`;
   navigator.clipboard.writeText(snippetCode);
-  alert('Ready-to-paste HTML (with embed script) copied to clipboard!');
+  showToast('HTML snippet copied to clipboard!', 'success');
 }
 
 loadForms();
