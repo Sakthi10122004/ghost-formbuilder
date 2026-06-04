@@ -293,7 +293,34 @@
           <div>
             <label style="${labelStyle}">${f.label}${reqStar}</label>
             <div style="display: flex; gap: 8px;">
-              <select name="${f.label}_country_code" style="${selectStyle}" ${focusScript}>
+              <select name="${f.label}_country_code" style="${selectStyle}" ${focusScript}
+                      onchange="
+                        const lenMap = {
+                          '+1': { min: 10, max: 10 },
+                          '+91': { min: 10, max: 10 },
+                          '+44': { min: 10, max: 10 },
+                          '+61': { min: 9, max: 9 },
+                          '+81': { min: 10, max: 10 },
+                          '+49': { min: 10, max: 11 },
+                          '+33': { min: 9, max: 9 },
+                          '+86': { min: 11, max: 11 },
+                          '+55': { min: 10, max: 11 },
+                          '+7': { min: 10, max: 10 },
+                          '+27': { min: 9, max: 9 },
+                          '+971': { min: 9, max: 9 },
+                          '+65': { min: 8, max: 8 },
+                          '+34': { min: 9, max: 9 },
+                          '+39': { min: 10, max: 10 }
+                        };
+                        const cfg = lenMap[this.value] || { min: 5, max: 15 };
+                        const inp = this.nextElementSibling;
+                        inp.minLength = cfg.min;
+                        inp.maxLength = cfg.max;
+                        inp.pattern = '[0-9]{' + cfg.min + ',' + cfg.max + '}';
+                        inp.placeholder = '9876543210'.substring(0, cfg.max);
+                        inp.title = 'Please enter exactly ' + (cfg.min === cfg.max ? cfg.min : cfg.min + ' to ' + cfg.max) + ' digits';
+                        if (inp.value) { inp.value = inp.value.substring(0, cfg.max); }
+                      ">
                 <option value="+1">🇺🇸 +1</option>
                 <option value="+91" selected>🇮🇳 +91</option>
                 <option value="+44">🇬🇧 +44</option>
@@ -310,9 +337,9 @@
                 <option value="+34">🇪🇸 +34</option>
                 <option value="+39">🇮🇹 +39</option>
               </select>
-              <input style="${phoneInputStyle}" type="tel" name="${f.label}" placeholder="98765 43210" ${reqAttr} 
-                     pattern="[0-9]{5,15}" title="Please enter a valid phone number (digits only, 5 to 15 digits)"
-                     oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+              <input style="${phoneInputStyle}" type="tel" name="${f.label}" placeholder="9876543210" ${reqAttr} 
+                     minLength="10" maxLength="10" pattern="[0-9]{10}" title="Please enter exactly 10 digits"
+                     oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, this.maxLength)"
                      ${focusScript}>
             </div>
           </div>`;
