@@ -124,6 +124,25 @@
             }
           }
 
+          // Combine country code and phone number for 'phone' type fields
+          if (form && form.fields) {
+            form.fields.forEach(f => {
+              if (f.type === 'phone') {
+                const phoneInput = formEl.querySelector(`input[name="${f.label}"]`);
+                const countrySelect = formEl.querySelector(`select[name="${f.label}_country_code"]`);
+                if (phoneInput && countrySelect) {
+                  const phoneVal = phoneInput.value.trim();
+                  if (phoneVal) {
+                    data[f.label] = `${countrySelect.value} ${phoneVal}`;
+                  } else {
+                    data[f.label] = '';
+                  }
+                }
+                delete data[`${f.label}_country_code`];
+              }
+            });
+          }
+
           // Handle file uploads asynchronously to convert them to Base64
           const readFileAsDataURL = (file) => new Promise((resolve) => {
             const reader = new FileReader();
@@ -245,10 +264,57 @@
             <input style="${inputStyle}" type="email" name="${f.label}" placeholder="name@domain.com" ${reqAttr} ${focusScript}>
           </div>`;
       case 'phone':
+        const phoneInputStyle = `
+          flex: 1;
+          padding: 10px 14px;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          border-radius: 8px;
+          font-size: 14px;
+          font-family: inherit;
+          background: #fff;
+          color: #15171a;
+          box-sizing: border-box;
+          transition: all 0.2s ease;
+          outline: none;
+        `;
+        const selectStyle = `
+          padding: 10px 12px;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          border-radius: 8px;
+          font-size: 14px;
+          font-family: inherit;
+          background: #fff;
+          color: #15171a;
+          box-sizing: border-box;
+          outline: none;
+          cursor: pointer;
+        `;
         return `
           <div>
             <label style="${labelStyle}">${f.label}${reqStar}</label>
-            <input style="${inputStyle}" type="tel" name="${f.label}" placeholder="+1 (555) 000-0000" ${reqAttr} ${focusScript}>
+            <div style="display: flex; gap: 8px;">
+              <select name="${f.label}_country_code" style="${selectStyle}" ${focusScript}>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+91" selected>🇮🇳 +91</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+61">🇦🇺 +61</option>
+                <option value="+81">🇯🇵 +81</option>
+                <option value="+49">🇩🇪 +49</option>
+                <option value="+33">🇫🇷 +33</option>
+                <option value="+86">🇨🇳 +86</option>
+                <option value="+55">🇧🇷 +55</option>
+                <option value="+7">🇷🇺 +7</option>
+                <option value="+27">🇿🇦 +27</option>
+                <option value="+971">🇦🇪 +971</option>
+                <option value="+65">🇸🇬 +65</option>
+                <option value="+34">🇪🇸 +34</option>
+                <option value="+39">🇮🇹 +39</option>
+              </select>
+              <input style="${phoneInputStyle}" type="tel" name="${f.label}" placeholder="98765 43210" ${reqAttr} 
+                     pattern="[0-9]{5,15}" title="Please enter a valid phone number (digits only, 5 to 15 digits)"
+                     oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                     ${focusScript}>
+            </div>
           </div>`;
       case 'number':
         const minAttr = f.min !== undefined && f.min !== '' ? `min="${f.min}"` : '';
