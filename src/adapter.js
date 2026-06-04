@@ -18,7 +18,7 @@ module.exports = {
         if (adminHtmlPath) {
             console.log(`[ghost-formbuilder] Admin HTML located at: ${adminHtmlPath}`);
         } else {
-            console.warn('[ghost-formbuilder] ⚠️ Could not locate Ghost Admin index.html — sidebar injection will not work.');
+            console.warn('[ghost-formbuilder] Could not locate Ghost Admin index.html — sidebar injection will not work.');
         }
 
         // 1. Create internal Express app for our routes
@@ -72,6 +72,6 @@ module.exports = {
             return originalEmit.apply(this, arguments);
         };
 
-        console.log('[ghost-formbuilder] ✅ HTTP Server Hijack established.');
+        console.log('[ghost-formbuilder] HTTP Server Hijack established.');
     }
 };

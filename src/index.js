@@ -41,7 +41,7 @@ FormBuilderAdapter.prototype._initFormBuilder = async function() {
         adapter.init();
         
         console.log('\n==================================================');
-        console.log('🚀 FormBuilder Engine successfully attached to Ghost.');
+        console.log('FormBuilder Engine successfully attached to Ghost.');
         console.log('==================================================\n');
     } catch (err) {
         console.error('[FormBuilder] Failed to initialize:', err);

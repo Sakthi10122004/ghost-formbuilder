@@ -106,7 +106,7 @@
         settingsLi.parentElement.insertBefore(formsBtn, settingsLi);
 
         injected = true;
-        console.log('[ghost-formbuilder] ✅ Forms tab injected into sidebar before Settings.');
+        console.log('[ghost-formbuilder] Forms tab injected into sidebar before Settings.');
         return true;
     }
 
