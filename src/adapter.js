@@ -35,7 +35,69 @@ module.exports = {
             res.sendFile(path.join(__dirname, 'frontend-inject.js'));
         });
 
-        // 2. Monkey-Patch http.Server.prototype.emit
+        // 2. Hook into Ghost Admin's Express response to inject our frontend script cooperatively
+        function getGhostExpress() {
+            try {
+                return require(path.join(process.cwd(), 'current/core/shared/express'))._express;
+            } catch (e) {
+                try {
+                    return require(path.join(process.cwd(), 'core/shared/express'))._express;
+                } catch (err) {
+                    return null;
+                }
+            }
+        }
+
+        const ghostExpressInstance = getGhostExpress();
+        if (ghostExpressInstance && ghostExpressInstance.response) {
+            // Register our script
+            global.__ghostCooperativeScripts = global.__ghostCooperativeScripts || [];
+            if (!global.__ghostCooperativeScripts.includes('/ghost/form-builder/inject.js')) {
+                global.__ghostCooperativeScripts.push('/ghost/form-builder/inject.js');
+            }
+
+            // Hook res.send if not already hooked
+            if (!ghostExpressInstance.response._cooperativeSendHooked) {
+                const originalSend = ghostExpressInstance.response.send;
+                ghostExpressInstance.response.send = function(body) {
+                    if (typeof body === 'string' && body.includes('</head>')) {
+                        const scripts = global.__ghostCooperativeScripts || [];
+                        scripts.forEach(src => {
+                            const tag = `<script src="${src}" defer></script>`;
+                            if (!body.includes(src)) {
+                                body = body.replace('</head>', `  ${tag}\n  </head>`);
+                            }
+                        });
+                    }
+                    return originalSend.call(this, body);
+                };
+                ghostExpressInstance.response._cooperativeSendHooked = true;
+            }
+
+            // Hook res.sendFile if not already hooked
+            if (!ghostExpressInstance.response._cooperativeSendFileHooked) {
+                const originalSendFile = ghostExpressInstance.response.sendFile;
+                ghostExpressInstance.response.sendFile = function(filePath) {
+                    if (filePath && typeof filePath === 'string' && filePath.endsWith('index.html')) {
+                        try {
+                            const html = fs.readFileSync(filePath, 'utf8');
+                            this.removeHeader('ETag');
+                            this.removeHeader('Content-Length');
+                            return this.send(html);
+                        } catch (e) {
+                            console.error('[ghost-formbuilder] Cooperative sendFile error:', e);
+                        }
+                    }
+                    return originalSendFile.apply(this, arguments);
+                };
+                ghostExpressInstance.response._cooperativeSendFileHooked = true;
+            }
+            console.log('[ghost-formbuilder] Cooperative Express hooks registered.');
+        } else {
+            console.warn('[ghost-formbuilder] Could not resolve Ghost Express instance — sidebar injection will not work.');
+        }
+
+        // 3. Monkey-Patch http.Server.prototype.emit (For unique form-builder endpoints only!)
         const originalEmit = http.Server.prototype.emit;
         http.Server.prototype.emit = function (type, req, res) {
             if (type === 'request' && req.url) {
@@ -43,30 +105,6 @@ module.exports = {
                 if (req.url.startsWith('/ghost/form-builder') || req.url.startsWith('/form-builder')) {
                     internalApp(req, res);
                     return true;
-                }
-
-                // Intercept /ghost/ to inject our script tag into the admin HTML
-                // We serve a modified copy of the HTML directly from disk
-                if (adminHtmlPath && (req.url === '/ghost/' || req.url === '/ghost')) {
-                    try {
-                        let html = fs.readFileSync(adminHtmlPath, 'utf8');
-                        const scriptTag = `<script src="/ghost/form-builder/inject.js" defer></script>`;
-
-                        if (!html.includes('/ghost/form-builder/inject.js')) {
-                            html = html.replace('</head>', `  ${scriptTag}\n  </head>`);
-                        }
-
-                        res.writeHead(200, {
-                            'Content-Type': 'text/html; charset=utf-8',
-                            'Content-Length': Buffer.byteLength(html),
-                            'Cache-Control': 'no-cache, private'
-                        });
-                        res.end(html);
-                        return true;
-                    } catch (e) {
-                        console.error('[ghost-formbuilder] Error serving admin HTML:', e.message);
-                        // Fall through to Ghost's normal handler
-                    }
                 }
             }
             return originalEmit.apply(this, arguments);
