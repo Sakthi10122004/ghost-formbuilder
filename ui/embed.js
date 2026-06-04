@@ -174,13 +174,23 @@
               }
             }
 
-            const submitRes = await fetch(`/form-builder/submit/${formId}`, {
+            const response = await fetch(`/form-builder/submit/${formId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data),
-            }).then(r => r.json());
+            });
 
-            if (submitRes.ok) {
+            let submitRes;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              submitRes = await response.json();
+            } else {
+              const text = await response.text();
+              const plainText = text.replace(/<[^>]*>/g, '').trim().substring(0, 150);
+              submitRes = { ok: response.ok, error: plainText || `HTTP ${response.status}: ${response.statusText}` };
+            }
+
+            if (response.ok && submitRes.ok) {
               formEl.innerHTML = `
                 <div style="text-align: center; padding: 30px 0; animation: fbFadeIn 0.3s ease;">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#30d158" stroke-width="2" style="margin-bottom:12px;">
