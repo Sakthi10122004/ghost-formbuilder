@@ -624,6 +624,12 @@ async function viewResponses(id, name) {
         </td>
         ${currentHeaders.map(h => {
           const val = (sub.data && sub.data[h] !== undefined) ? sub.data[h] : '-';
+          if (val && typeof val === 'object' && val.filename && val.data) {
+            return `<td class="field-val"><a href="${val.data}" download="${val.filename}" style="color: var(--accent-blue, #0a84ff); text-decoration: underline; font-weight: 500;">${val.filename}</a></td>`;
+          }
+          if (Array.isArray(val)) {
+            return `<td class="field-val">${val.join(', ')}</td>`;
+          }
           return `<td class="field-val">${val}</td>`;
         }).join('')}
       </tr>
@@ -632,7 +638,7 @@ async function viewResponses(id, name) {
     downloadContainer.innerHTML = `
       <button class="btn btn-success" onclick="triggerCSVDownload()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download CSV
+         Download CSV
       </button>
     `;
   } catch (err) {
@@ -651,8 +657,16 @@ function triggerCSVDownload() {
     const row = [
       new Date(sub.createdAt).toLocaleString(),
       ...currentHeaders.map(h => {
-        const val = (sub.data && sub.data[h] !== undefined) ? String(sub.data[h]) : '';
-        return `"${val.replace(/"/g, '""')}"`;
+        const val = (sub.data && sub.data[h] !== undefined) ? sub.data[h] : '';
+        let cellText = '';
+        if (val && typeof val === 'object' && val.filename) {
+          cellText = val.filename;
+        } else if (Array.isArray(val)) {
+          cellText = val.join(', ');
+        } else {
+          cellText = String(val);
+        }
+        return `"${cellText.replace(/"/g, '""')}"`;
       })
     ];
     csvRows.push(row.join(','));

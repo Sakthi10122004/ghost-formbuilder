@@ -43,28 +43,53 @@
             <span class="fb-error-text"></span>
           </div>
         ` + form.fields.map(f => buildField(f)).join('') + `
-          <button type="submit"
-            style="
-              padding: 12px 24px;
-              background: #15171a;
-              color: #fff;
-              border: none;
-              border-radius: 8px;
-              font-size: 14.5px;
-              font-weight: 500;
-              cursor: pointer;
-              transition: all 0.2s ease;
-              box-shadow: 0 4px 12px rgba(21, 23, 26, 0.15);
-              font-family: inherit;
-              align-self: flex-start;
-              margin-top: 6px;
-            "
-            onmouseover="this.style.background='#000'; this.style.transform='translateY(-1px)';"
-            onmouseout="this.style.background='#15171a'; this.style.transform='translateY(0)';"
-          >
-            Submit Response
-          </button>
+          <div style="display: flex; gap: 12px; margin-top: 6px; align-self: flex-start; flex-wrap: wrap;">
+            <button type="submit"
+              style="
+                padding: 12px 24px;
+                background: #15171a;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                font-size: 14.5px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                box-shadow: 0 4px 12px rgba(21, 23, 26, 0.15);
+                font-family: inherit;
+              "
+              onmouseover="this.style.background='#000'; this.style.transform='translateY(-1px)';"
+              onmouseout="this.style.background='#15171a'; this.style.transform='translateY(0)';"
+            >
+              Submit Response
+            </button>
+            <button type="reset"
+              style="
+                padding: 12px 24px;
+                background: transparent;
+                color: #7c8b9a;
+                border: 1px solid rgba(0, 0, 0, 0.12);
+                border-radius: 8px;
+                font-size: 14.5px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                font-family: inherit;
+              "
+              onmouseover="this.style.borderColor='rgba(0,0,0,0.24)'; this.style.color='#15171a'; this.style.transform='translateY(-1px)';"
+              onmouseout="this.style.borderColor='rgba(0,0,0,0.12)'; this.style.color='#7c8b9a'; this.style.transform='translateY(0)';"
+            >
+              Reset
+            </button>
+          </div>
         `;
+
+        formEl.addEventListener('reset', () => {
+          const errorBanner = formEl.querySelector('.fb-error-banner');
+          if (errorBanner) {
+            errorBanner.style.display = 'none';
+          }
+        });
 
         formEl.addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -85,11 +110,51 @@
           const data = {};
           // Fetch fields dynamically
           const formData = new FormData(formEl);
-          for (const [key, value] of formData.entries()) {
-            data[key] = value;
+          for (const key of formData.keys()) {
+            const values = formData.getAll(key);
+            const el = formEl.querySelector(`[name="${key}"]`);
+            if (el && el.tagName === 'SELECT' && el.multiple) {
+              data[key] = values;
+            } else {
+              if (values.length > 1) {
+                data[key] = values;
+              } else {
+                data[key] = values[0];
+              }
+            }
           }
 
+          // Handle file uploads asynchronously to convert them to Base64
+          const readFileAsDataURL = (file) => new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+
           try {
+            const fileInputs = formEl.querySelectorAll('input[type="file"]');
+            for (const input of fileInputs) {
+              const name = input.name;
+              if (input.files && input.files[0]) {
+                const file = input.files[0];
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                  throw new Error(`File "${file.name}" exceeds the 10MB size limit.`);
+                }
+                const dataUrl = await readFileAsDataURL(file);
+                if (dataUrl) {
+                  data[name] = {
+                    filename: file.name,
+                    size: file.size,
+                    type: file.type,
+                    data: dataUrl
+                  };
+                }
+              } else {
+                data[name] = null;
+              }
+            }
+
             const submitRes = await fetch(`/form-builder/submit/${formId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -240,6 +305,47 @@
               <input type="checkbox" name="${f.label}" ${reqAttr} style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.12); cursor:pointer;">
               <span>${f.label}${reqStar}</span>
             </label>
+          </div>`;
+      case 'date':
+        return `
+          <div>
+            <label style="${labelStyle}">${f.label}${reqStar}</label>
+            <input style="${inputStyle}" type="date" name="${f.label}" ${reqAttr} ${focusScript}>
+          </div>`;
+      case 'time':
+        return `
+          <div>
+            <label style="${labelStyle}">${f.label}${reqStar}</label>
+            <input style="${inputStyle}" type="time" name="${f.label}" ${reqAttr} ${focusScript}>
+          </div>`;
+      case 'datetime':
+        return `
+          <div>
+            <label style="${labelStyle}">${f.label}${reqStar}</label>
+            <input style="${inputStyle}" type="datetime-local" name="${f.label}" ${reqAttr} ${focusScript}>
+          </div>`;
+      case 'file':
+        return `
+          <div>
+            <label style="${labelStyle}">${f.label}${reqStar}</label>
+            <input style="${inputStyle}" type="file" name="${f.label}" ${reqAttr} ${focusScript}>
+          </div>`;
+      case 'multiselect':
+        const multiselectOpts = (f.options || '').split(',').map(o =>
+          `<option value="${o.trim()}">${o.trim()}</option>`).join('');
+        return `
+          <div>
+            <label style="${labelStyle}">${f.label}${reqStar}</label>
+            <select style="${inputStyle} height: auto; min-height: 80px;" name="${f.label}" multiple ${reqAttr} ${focusScript}>
+              ${multiselectOpts}
+            </select>
+            <span style="font-size: 11px; color: #7c8b9a; margin-top: 4px; display: block;">Hold Ctrl (Cmd on Mac) to select multiple options</span>
+          </div>`;
+      case 'divider':
+        return `
+          <div style="margin: 12px 0 6px 0;">
+            ${f.label ? `<span style="font-size: 13.5px; font-weight: 600; color: #15171a; display: block; margin-bottom: 8px;">${f.label}</span>` : ''}
+            <hr style="border: none; border-top: 1px solid rgba(0, 0, 0, 0.08); margin: 0; width: 100%;">
           </div>`;
       default:
         return '';
