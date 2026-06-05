@@ -26,6 +26,17 @@ function FormBuilderAdapter(options) {
     SchedulingBase.call(this);
     this.options = options || {};
     this._initFormBuilder();
+
+    // Cooperatively load mailconfig if installed
+    if (!global.__mailconfigLoaded) {
+        global.__mailconfigLoaded = true;
+        try {
+            const MailconfigAdapter = require('@sakthi10122004/mailconfig');
+            new MailconfigAdapter(options);
+        } catch (e) {
+            // Not installed
+        }
+    }
 }
 
 // Inherit from SchedulingBase
