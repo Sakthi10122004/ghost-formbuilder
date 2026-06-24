@@ -1,34 +1,86 @@
 const fs = require('fs');
 const path = require('path');
-const express = require('express');
+const localExpress = require('express');
+let ghostExpress;
+try {
+    ghostExpress = require(path.join(process.cwd(), 'current/core/shared/express'))._express;
+} catch (e) {
+    ghostExpress = localExpress;
+}
 const http = require('http');
 const router = require('./router');
 const { getGhostPath } = require('./utils');
 
-function findAdminHtmlPath() {
-    return getGhostPath('core/built/admin/index.html');
-}
+const cachedIndexHtmlByPath = new Map();
 
 module.exports = {
     init: () => {
         console.log('[ghost-formbuilder] Initializing Hijack Engine...');
 
-        // Find the admin HTML path once at boot
-        const adminHtmlPath = findAdminHtmlPath();
-        if (adminHtmlPath) {
-            console.log(`[ghost-formbuilder] Admin HTML located at: ${adminHtmlPath}`);
-        } else {
-            console.warn('[ghost-formbuilder] ⚠️ Could not locate Ghost Admin index.html — sidebar injection will not work.');
+        // Register our script for cooperative injection
+        global.__ghostCooperativeScripts = global.__ghostCooperativeScripts || [];
+        if (!global.__ghostCooperativeScripts.includes('/ghost/form-builder/inject.js')) {
+            global.__ghostCooperativeScripts.push('/ghost/form-builder/inject.js');
+        }
+
+        if (ghostExpress && ghostExpress.response) {
+            if (!ghostExpress.response._cooperativeSendHooked) {
+                const originalSend = ghostExpress.response.send;
+                ghostExpress.response.send = function(body) {
+                    const contentEncoding = this.getHeader('content-encoding');
+                    const hasEncoding = contentEncoding && contentEncoding !== 'identity';
+                    
+                    const contentType = this.getHeader('content-type') || '';
+                    const isHtml = !hasEncoding && typeof body === 'string' && (contentType.includes('text/html') || /^\s*(<!DOCTYPE|html)/i.test(body));
+                    if (isHtml && body.includes('</head>')) {
+                        const scripts = global.__ghostCooperativeScripts || [];
+                        let modified = false;
+                        scripts.forEach(src => {
+                            const tag = `<script src="${src}"></script>`;
+                            if (!body.includes(src)) {
+                                body = body.replace('</head>', `  ${tag}\n  </head>`);
+                                modified = true;
+                            }
+                        });
+                        if (modified) {
+                            this.removeHeader('Content-Length');
+                        }
+                    }
+                    return originalSend.call(this, body);
+                };
+                ghostExpress.response._cooperativeSendHooked = true;
+            }
+
+            if (!ghostExpress.response._cooperativeSendFileHooked) {
+                const originalSendFile = ghostExpress.response.sendFile;
+                ghostExpress.response.sendFile = function(filePath) {
+                    if (filePath && typeof filePath === 'string' && filePath.endsWith('index.html')) {
+                        try {
+                            const cacheKey = path.resolve(filePath);
+                            if (!cachedIndexHtmlByPath.has(cacheKey)) {
+                                cachedIndexHtmlByPath.set(cacheKey, fs.readFileSync(filePath, 'utf8'));
+                            }
+                            this.removeHeader('ETag');
+                            this.removeHeader('Content-Length');
+                            return this.send(cachedIndexHtmlByPath.get(cacheKey));
+                        } catch (e) {
+                            console.error('[ghost-formbuilder] Cooperative sendFile error:', e);
+                        }
+                    }
+                    return originalSendFile.apply(this, arguments);
+                };
+                ghostExpress.response._cooperativeSendFileHooked = true;
+            }
         }
 
         // 1. Create internal Express app for our routes
-        const internalApp = express();
+        const internalApp = localExpress();
         internalApp.use('/ghost/form-builder', router);
         internalApp.use('/form-builder', router);
         
         // Serve UI assets from both paths
-        internalApp.use('/ghost/form-builder/ui', express.static(path.join(__dirname, '../ui')));
-        internalApp.use('/form-builder/ui', express.static(path.join(__dirname, '../ui')));
+        internalApp.use('/ghost/form-builder/ui', localExpress.static(path.join(__dirname, '../ui')));
+        internalApp.use('/form-builder/ui', localExpress.static(path.join(__dirname, '../ui')));
         
         internalApp.get('/ghost/form-builder/inject.js', (req, res) => {
             res.setHeader('Content-Type', 'application/javascript');
@@ -44,34 +96,10 @@ module.exports = {
                     internalApp(req, res);
                     return true;
                 }
-
-                // Intercept /ghost/ to inject our script tag into the admin HTML
-                // We serve a modified copy of the HTML directly from disk
-                if (adminHtmlPath && (req.url === '/ghost/' || req.url === '/ghost')) {
-                    try {
-                        let html = fs.readFileSync(adminHtmlPath, 'utf8');
-                        const scriptTag = `<script src="/ghost/form-builder/inject.js" defer></script>`;
-
-                        if (!html.includes('/ghost/form-builder/inject.js')) {
-                            html = html.replace('</head>', `  ${scriptTag}\n  </head>`);
-                        }
-
-                        res.writeHead(200, {
-                            'Content-Type': 'text/html; charset=utf-8',
-                            'Content-Length': Buffer.byteLength(html),
-                            'Cache-Control': 'no-cache, private'
-                        });
-                        res.end(html);
-                        return true;
-                    } catch (e) {
-                        console.error('[ghost-formbuilder] Error serving admin HTML:', e.message);
-                        // Fall through to Ghost's normal handler
-                    }
-                }
             }
             return originalEmit.apply(this, arguments);
         };
 
-        console.log('[ghost-formbuilder] ✅ HTTP Server Hijack established.');
+        console.log('[ghost-formbuilder] ✅ HTTP Server Hijack established cooperatively.');
     }
 };
