@@ -101,5 +101,6 @@ FormBuilderAdapter.prototype._initFormBuilder = async function() {
 FormBuilderAdapter.prototype.schedule = function(object) {};
 FormBuilderAdapter.prototype.unschedule = function(object) {};
 FormBuilderAdapter.prototype.run = function() {};
+FormBuilderAdapter.prototype.register = function(object) {};
 
 module.exports = FormBuilderAdapter;
