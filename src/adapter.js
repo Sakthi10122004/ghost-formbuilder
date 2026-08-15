@@ -30,26 +30,22 @@ module.exports = {
         internalApp.use('/ghost/form-builder/ui', express.static(path.join(__dirname, '../ui')));
         internalApp.use('/form-builder/ui', express.static(path.join(__dirname, '../ui')));
         
+        let expressLib;
+        try {
+            expressLib = require(path.join(process.cwd(), 'current/core/shared/express'))._express || require('express');
+        } catch (e) {
+            expressLib = require('express');
+        }
+        
         internalApp.get('/ghost/form-builder/inject.js', (req, res) => {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
             res.setHeader('Content-Type', 'application/javascript');
             res.sendFile(path.join(__dirname, 'frontend-inject.js'));
         });
 
-        // 2. Hook into Ghost Admin's Express response to inject our frontend script cooperatively
-        function getGhostExpress() {
-            try {
-                return require(path.join(process.cwd(), 'current/core/shared/express'))._express;
-            } catch (e) {
-                try {
-                    return require(path.join(process.cwd(), 'core/shared/express'))._express;
-                } catch (err) {
-                    return null;
-                }
-            }
-        }
-
-        const ghostExpressInstance = getGhostExpress();
-        if (ghostExpressInstance && ghostExpressInstance.response) {
+        if (expressLib && expressLib.response) {
             // Register our script
             global.__ghostCooperativeScripts = global.__ghostCooperativeScripts || [];
             if (!global.__ghostCooperativeScripts.includes('/ghost/form-builder/inject.js')) {
@@ -57,44 +53,59 @@ module.exports = {
             }
 
             // Hook res.send if not already hooked
-            if (!ghostExpressInstance.response._cooperativeSendHooked) {
-                const originalSend = ghostExpressInstance.response.send;
-                ghostExpressInstance.response.send = function(body) {
-                    if (typeof body === 'string' && body.includes('</head>')) {
+            if (!expressLib.response._cooperativeSendHooked) {
+                const originalSend = expressLib.response.send;
+                expressLib.response.send = function(body) {
+                    const contentEncoding = this.getHeader('content-encoding');
+                    const hasEncoding = contentEncoding && contentEncoding !== 'identity';
+                    
+                    const contentType = this.getHeader('content-type') || '';
+                    const isHtml = !hasEncoding && typeof body === 'string' && (contentType.includes('text/html') || /^\s*(<!DOCTYPE|html)/i.test(body));
+                    
+                    if (isHtml && body.includes('</head>')) {
                         const scripts = global.__ghostCooperativeScripts || [];
+                        let modified = false;
                         scripts.forEach(src => {
-                            const tag = `<script src="${src}" defer></script>`;
+                            const tag = `<script src="${src}"></script>`;
                             if (!body.includes(src)) {
                                 body = body.replace('</head>', `  ${tag}\n  </head>`);
+                                modified = true;
                             }
                         });
+                        if (modified) {
+                            this.removeHeader('Content-Length');
+                        }
                     }
                     return originalSend.call(this, body);
                 };
-                ghostExpressInstance.response._cooperativeSendHooked = true;
+                expressLib.response._cooperativeSendHooked = true;
             }
 
             // Hook res.sendFile if not already hooked
-            if (!ghostExpressInstance.response._cooperativeSendFileHooked) {
-                const originalSendFile = ghostExpressInstance.response.sendFile;
-                ghostExpressInstance.response.sendFile = function(filePath) {
+            if (!expressLib.response._cooperativeSendFileHooked) {
+                const cachedIndexHtmlByPath = new Map();
+                const originalSendFile = expressLib.response.sendFile;
+                expressLib.response.sendFile = function(filePath) {
                     if (filePath && typeof filePath === 'string' && filePath.endsWith('index.html')) {
                         try {
-                            const html = fs.readFileSync(filePath, 'utf8');
+                            const cacheKey = path.resolve(filePath);
+                            if (!cachedIndexHtmlByPath.has(cacheKey)) {
+                                cachedIndexHtmlByPath.set(cacheKey, fs.readFileSync(filePath, 'utf8'));
+                            }
                             this.removeHeader('ETag');
                             this.removeHeader('Content-Length');
-                            return this.send(html);
+                            return this.send(cachedIndexHtmlByPath.get(cacheKey));
                         } catch (e) {
                             console.error('[ghost-formbuilder] Cooperative sendFile error:', e);
                         }
                     }
                     return originalSendFile.apply(this, arguments);
                 };
-                ghostExpressInstance.response._cooperativeSendFileHooked = true;
+                expressLib.response._cooperativeSendFileHooked = true;
             }
-            console.log('[ghost-formbuilder] Cooperative Express hooks registered.');
+            console.log('[ghost-formbuilder] Cooperative Express hooks registered via global prototype.');
         } else {
-            console.warn('[ghost-formbuilder] Could not resolve Ghost Express instance — sidebar injection will not work.');
+            console.warn('[ghost-formbuilder] Could not resolve Express library — sidebar injection will not work.');
         }
 
         // 3. Monkey-Patch http.Server.prototype.emit (For unique form-builder endpoints only!)

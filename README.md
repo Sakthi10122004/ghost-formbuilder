@@ -20,7 +20,7 @@ A premium, non-destructive, zero-configuration drag-and-drop form builder compan
 Step into your Ghost installation root directory and run the standard install pointing to this package:
 
 ```bash
-npm install "E:\Ghost Package\form_builder"
+npm install "/path/to/ghost-formbuilder"
 ```
 
 Our strict **environment guard** will validate your Ghost ecosystem, and automatically inject the scheduling hijack config `"scheduling": { "active": "ghost-formbuilder" }` into your configuration.
@@ -31,6 +31,14 @@ Apply the integration by restarting your Ghost instance:
 ```bash
 ghost restart
 ```
+
+### 3. Uninstall
+If your local NPM blocks lifecycle scripts (e.g., `allow-scripts` warnings), run the teardown script manually before uninstalling to ensure your Ghost configuration is cleaned properly:
+```bash
+node "node_modules/ghost-formbuilder/scripts/uninstall.js"
+npm uninstall ghost-formbuilder
+```
+*(The teardown script automatically triggers a local ghost restart).*
 
 ### 3. Open Forms Console
 Navigate to your Ghost Admin panel (`http://localhost:2368/ghost/`). You will see a new **Forms** tab right above **Settings**.

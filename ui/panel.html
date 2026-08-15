@@ -554,9 +554,9 @@ function editForm(id) {
 
 function goBackToGhost() {
   if (window.parent && window.parent !== window) {
-    window.parent.location.hash = '#/dashboard';
+    window.parent.location.hash = '#/settings';
   } else {
-    window.location.href = '/ghost/';
+    window.location.href = '/ghost/#/settings';
   }
 }
 

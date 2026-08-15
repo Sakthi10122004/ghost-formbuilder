@@ -58,6 +58,29 @@ let configModified = false;
 });
 
 if (configModified) {
-    console.log('\n\x1b[32m%s\x1b[0m', 'Plugin uninstalled and config cleaned! Do `ghost restart` to apply changes.');
+    console.log('\n\x1b[32m%s\x1b[0m', 'Plugin config cleaned!');
     console.log('');
 }
+
+function triggerRestart(ghostRoot) {
+    const cp = require('child_process');
+    if (fs.existsSync(path.join(ghostRoot, '.ghost-cli'))) {
+        console.log('[-] Triggering local Ghost CLI restart...');
+        try {
+            cp.execSync('ghost restart', { cwd: ghostRoot, stdio: 'inherit' });
+            console.log('[-] Local ghost restart completed.');
+            return;
+        } catch (e) {
+            console.warn('[!] Ghost restart failed:', e.message);
+        }
+    }
+    const contentDataPath = path.join(ghostRoot, 'content', 'data');
+    if (fs.existsSync(contentDataPath)) {
+        const triggerFile = path.join(contentDataPath, '.reload-trigger');
+        fs.writeFileSync(triggerFile, Date.now().toString());
+        console.log('[-] Triggered supervisor hot-reload to complete teardown');
+    }
+}
+
+triggerRestart(ghostRoot);
+console.log('[-] ghost-formbuilder: Teardown complete.\n');
