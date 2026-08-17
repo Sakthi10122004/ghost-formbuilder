@@ -3,8 +3,8 @@ const path      = require('path');
 const router    = express.Router();
 const formStore = require('./formStorage');
 const { getGhostPath } = require('./utils');
-
-router.use(express.json());
+router.use(express.json({ limit: '15mb' }));
+router.use(express.urlencoded({ limit: '15mb', extended: true }));
 
 // Load Ghost's core session service dynamically
 let getSession = null;

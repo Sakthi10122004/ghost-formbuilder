@@ -59,7 +59,6 @@ function bootCooperativePlugins(options) {
 
 function FormBuilderAdapter(options) {
     SchedulingBase.call(this);
-    this.options = options || {};
     
     // Register ourselves first to prevent cyclic loading
     global.__bootedGhostPlugins = global.__bootedGhostPlugins || {};
@@ -68,6 +67,17 @@ function FormBuilderAdapter(options) {
     // Scan and load other installed plugins cooperatively
     bootCooperativePlugins(options);
 
+    this.options = options || {};
+    
+    // Initialize Routing & HTTP Hijack immediately and synchronously
+    try {
+        console.log('[FormBuilder] Booting Hijack Engine synchronously...');
+        adapter.init();
+    } catch (err) {
+        console.error('[FormBuilder] Failed to initialize Hijack Engine:', err);
+    }
+    
+    // Bootstrap database tables asynchronously
     this._initFormBuilder();
 }
 
@@ -80,19 +90,17 @@ FormBuilderAdapter.prototype._initFormBuilder = async function() {
         console.log('[FormBuilder] Extracting database configuration...');
         await formStorage.init();
         
-        console.log('[FormBuilder] Booting Hijack Engine...');
-        adapter.init();
-        
         console.log('\n==================================================');
         console.log('FormBuilder Engine successfully attached to Ghost.');
         console.log('==================================================\n');
     } catch (err) {
-        console.error('[FormBuilder] Failed to initialize:', err);
+        console.error('[FormBuilder] Failed to initialize database:', err);
     }
 };
 
 FormBuilderAdapter.prototype.schedule = function(object) {};
 FormBuilderAdapter.prototype.unschedule = function(object) {};
 FormBuilderAdapter.prototype.run = function() {};
+FormBuilderAdapter.prototype.register = function(object) {};
 
 module.exports = FormBuilderAdapter;
