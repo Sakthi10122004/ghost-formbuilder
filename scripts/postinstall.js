@@ -50,7 +50,11 @@ function triggerRestart(ghostRoot) {
     if (fs.existsSync(path.join(ghostRoot, '.ghost-cli'))) {
         console.log('[+] Triggering local Ghost CLI restart...');
         try {
-            const child = cp.spawn('ghost', ['restart'], { cwd: ghostRoot, detached: true, stdio: 'ignore' });
+            const isWindows = process.platform === 'win32';
+            const child = cp.spawn('ghost', ['restart'], { cwd: ghostRoot, detached: true, stdio: 'ignore', shell: isWindows });
+            child.on('error', () => {
+                console.log('[+] Note: Could not auto-restart Ghost automatically (run `ghost restart` manually if needed).');
+            });
             child.unref();
             console.log('[+] Local ghost restart initiated in background.');
             return;
