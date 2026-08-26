@@ -1,4 +1,22 @@
 (function () {
+  // ── SYNC FOUC PREVENTION ──
+  // Hide target elements immediately to prevent Flash of Unstyled Content
+  if (window.__fbLayoutMap) {
+    const targets = document.querySelectorAll('[data-form-id]');
+    for (const el of targets) {
+      const layout = window.__fbLayoutMap[el.dataset.formId];
+      if (layout === 'left' || layout === 'right' || layout === 'split_left' || layout === 'split_right') {
+        let targetEl = el.previousElementSibling;
+        if (targetEl && targetEl.tagName === 'P' && targetEl.innerHTML.trim() === '') {
+          targetEl = targetEl.previousElementSibling;
+        }
+        if (targetEl) {
+          targetEl.style.opacity = '0';
+        }
+      }
+    }
+  }
+
   async function renderForms() {
     const targets = document.querySelectorAll('[data-form-id]');
     if (!targets.length) return;
@@ -22,9 +40,21 @@
         if (!form || !form.fields) continue;
 
         const formEl = document.createElement('form');
+        let layoutCss = `
+          max-width: 520px !important;
+          width: 100% !important;
+          margin: 0 auto !important;
+          float: none !important;
+        `;
+        if (form.layout === 'left') {
+          layoutCss = `float: left !important; margin: 0 32px 32px 0 !important; max-width: 50% !important; min-width: 320px !important; clear: none !important;`;
+        } else if (form.layout === 'right') {
+          layoutCss = `float: right !important; margin: 0 0 32px 32px !important; max-width: 50% !important; min-width: 320px !important; clear: none !important;`;
+        } else if (form.layout === 'full' || form.layout === 'split_left' || form.layout === 'split_right') {
+          layoutCss = `width: 100% !important; max-width: none !important; margin: 0 0 32px 0 !important; float: none !important;`;
+        }
+
         formEl.style.cssText = `
-          max-width: 520px;
-          width: 100%;
           display: flex;
           flex-direction: column;
           gap: 18px;
@@ -35,6 +65,7 @@
           padding: 24px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
           box-sizing: border-box;
+          ${layoutCss}
         `;
         
         formEl.innerHTML = `
@@ -83,6 +114,12 @@
             </button>
           </div>
         `;
+
+        if (form.customCss) {
+          const styleEl = document.createElement('style');
+          styleEl.textContent = form.customCss;
+          formEl.appendChild(styleEl);
+        }
 
         formEl.addEventListener('reset', () => {
           const errorBanner = formEl.querySelector('.fb-error-banner');
@@ -223,7 +260,98 @@
           }
         });
 
-        el.replaceWith(formEl);
+        // ── Auto-DOM Fusion Logic for Ghost Image Cards ──
+        let targetEl = el.previousElementSibling;
+        
+        // Sometimes Ghost leaves empty P tags between cards
+        if (targetEl && targetEl.tagName === 'P' && targetEl.innerHTML.trim() === '') {
+          targetEl = targetEl.previousElementSibling;
+        }
+
+        const isSideBySide = form.layout === 'left' || form.layout === 'right' || form.layout === 'split_left' || form.layout === 'split_right';
+        const isSplitCard = form.layout === 'split_left' || form.layout === 'split_right';
+
+        if (isSideBySide && targetEl) {
+          const isImage = targetEl.tagName === 'FIGURE' && (targetEl.classList.contains('kg-image-card') || targetEl.classList.contains('kg-gallery-card'));
+          
+          const wrapper = document.createElement('div');
+          wrapper.className = 'fb-split-layout';
+          wrapper.style.animation = 'fbFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+          
+          targetEl.style.opacity = '1'; // Reveal it now that it is fused!
+          targetEl.parentNode.insertBefore(wrapper, targetEl);
+
+          if (isSplitCard) {
+            // -- UNIFIED SPLIT CARD --
+            wrapper.style.cssText = 'display: flex; width: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 15px 40px -5px rgba(0,0,0,0.08); margin: 48px 0; background: rgba(255, 255, 255, 0.03); flex-wrap: wrap; border: 1px solid rgba(0, 0, 0, 0.08);';
+            
+            // Replaced min-height: 100% with align-self: stretch to prevent iOS Safari flex collapse bugs
+            targetEl.style.cssText += 'flex: 1 1 300px; margin: 0; align-self: stretch; max-width: none; width: 100%; min-width: 280px;';
+            
+            if (isImage) {
+              const img = targetEl.querySelector('img');
+              if (img) {
+                img.style.cssText += 'width: 100%; height: 100%; object-fit: cover; border-radius: 0; box-shadow: none;';
+              }
+            } else {
+              // It's text or another card! Add internal padding so it doesn't hit the split card edges
+              targetEl.style.cssText += 'padding: 40px 32px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center;';
+            }
+
+            formEl.style.cssText = `
+              display: flex;
+              flex-direction: column;
+              gap: 18px;
+              font-family: 'Outfit', sans-serif;
+              padding: 40px 32px;
+              box-sizing: border-box;
+              flex: 1 1 300px !important;
+              min-width: 280px !important;
+              margin: 0 !important;
+              max-width: none !important;
+              float: none !important;
+              background: transparent !important;
+              border: none !important;
+              box-shadow: none !important;
+              border-radius: 0 !important;
+            `;
+
+            if (form.layout === 'split_right') {
+              wrapper.appendChild(formEl);
+              wrapper.appendChild(targetEl);
+            } else {
+              wrapper.appendChild(targetEl);
+              wrapper.appendChild(formEl);
+            }
+          } else {
+            // -- SEPARATE FLOATING BLOCKS --
+            wrapper.style.cssText = 'display: flex; gap: 48px; align-items: center; margin: 48px 0; width: 100%; box-sizing: border-box; flex-wrap: wrap;';
+            
+            targetEl.style.cssText += 'flex: 1 1 300px; margin: 0; max-width: none; width: 100%; min-width: 280px;';
+            formEl.style.cssText += 'flex: 1 1 300px !important; min-width: 280px !important; margin: 0 !important; max-width: none !important; float: none !important;';
+
+            if (isImage) {
+              const img = targetEl.querySelector('img');
+              if (img) {
+                img.style.cssText += 'width: 100%; height: auto; object-fit: cover; border-radius: 16px; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);';
+              }
+            }
+
+            if (form.layout === 'right') {
+              wrapper.appendChild(targetEl);
+              wrapper.appendChild(formEl);
+            } else {
+              wrapper.appendChild(formEl);
+              wrapper.appendChild(targetEl);
+            }
+          }
+          
+          el.remove(); // Remove the original embed div marker
+        } else {
+          if (targetEl) targetEl.style.opacity = '1'; // Safe fallback
+          // Standard replacement
+          el.replaceWith(formEl);
+        }
       } catch (err) {
         console.error('[form-builder] Render error:', err);
       }

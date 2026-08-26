@@ -123,7 +123,11 @@ async function requireAdminAuth(req, res, next) {
     }
   }
 
-  res.status(401).send('Unauthorized. Ghost Admin session required.');
+  if (req.path.startsWith('/api/') || req.xhr) {
+    res.status(401).json({ error: 'Unauthorized. Ghost Admin session required.' });
+  } else {
+    res.redirect('/ghost/#/signin');
+  }
 }
 
 // ── Admin UI pages ────────────────────────────────────────────────
