@@ -61,7 +61,11 @@ exports.getForm = async (id) => {
 exports.createForm = async (formDef) => {
     const id = crypto.randomBytes(8).toString('hex');
     const title = formDef.name || 'Untitled Form';
-    const schema = JSON.stringify(formDef.fields || []);
+    const schema = JSON.stringify({
+        fields: formDef.fields || [],
+        customCss: formDef.customCss || '',
+        layout: formDef.layout || 'default'
+    });
     
     await db('fb_forms').insert({
         id,
@@ -76,7 +80,11 @@ exports.createForm = async (formDef) => {
 
 exports.updateForm = async (id, formDef) => {
     const title = formDef.name;
-    const schema = JSON.stringify(formDef.fields || []);
+    const schema = JSON.stringify({
+        fields: formDef.fields || [],
+        customCss: formDef.customCss || '',
+        layout: formDef.layout || 'default'
+    });
 
     await db('fb_forms').where({ id }).update({
         title,
@@ -112,13 +120,24 @@ exports.getSubmissions = async (formId) => {
 function rowToForm(row) {
     if (!row) return null;
     let fields = [];
+    let customCss = '';
+    let layout = 'default';
     try {
-        fields = JSON.parse(row.schema || '[]');
+        let parsed = JSON.parse(row.schema || '[]');
+        if (Array.isArray(parsed)) {
+            fields = parsed;
+        } else {
+            fields = parsed.fields || [];
+            customCss = parsed.customCss || '';
+            layout = parsed.layout || 'default';
+        }
     } catch (e) {}
     return {
         id: row.id,
         name: row.title,
         fields,
+        customCss,
+        layout,
         createdAt: row.created_at,
         updatedAt: row.updated_at
     };

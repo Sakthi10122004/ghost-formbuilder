@@ -10,7 +10,12 @@ A premium, non-destructive, zero-configuration drag-and-drop form builder compan
 - **React-Admin Native UI**: Hooks cleanly into Ghost's new React-based admin navigation sidebar via an elegant, non-destructive `MutationObserver` injector.
 - **Three-Screen Dashboard**: Manage form blueprints, copy HTML embedding snippets, delete forms, and explore **live, interactive response log payloads** inside a frosted-glass overlay.
 - **High-Performance Drag-and-Drop**: Build sleek forms dynamically with text fields, phone numbers, email controls, checkboxes, dropdowns, and textareas.
-- **Responsive Embed Engine**: Auto-renders beautiful, responsive form controls with sleek focus/hover interactions on your public-facing site.
+- **Magic Auto-DOM Fusion**: Place a Ghost Image Card, Text Card, or Callout immediately above your Form in the Ghost editor, and the plugin will seamlessly fuse them together into a side-by-side flex layout. Zero HTML coding required.
+- **Unified Split Card Layouts**: Choose "Split Card" in the Builder to generate professional "Hero Card" layouts. The engine automatically handles outer shadowing, corner rounding, and dynamic internal padding to ensure images kiss the edges perfectly while text is given breathing room.
+- **Advanced Custom CSS Engine**: Built-in CodeMirror IDE with dark-mode syntax highlighting allows power users to inject custom CSS per form.
+- **Smart CSS Starter Generator**: Instantly generate a boilerplate CSS stylesheet that automatically isolates specific form field names, country code selectors, and action buttons for rapid theming.
+- **Zero-FOUC Rendering Engine**: The backend dynamically injects a layout matrix into the frontend script, ensuring your complex flex layouts are mapped and hidden instantly on page load to prevent layout snapping or Flash of Unstyled Content.
+- **Responsive Embed Engine**: Auto-renders beautiful, responsive form controls with sleek focus/hover interactions on your public-facing site, safely wrapping to columns on mobile devices.
 
 ---
 

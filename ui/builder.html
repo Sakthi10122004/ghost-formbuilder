@@ -4,6 +4,23 @@
 <meta charset="utf-8">
 <title>Form Builder</title>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-darker.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+<style>
+  .CodeMirror {
+    height: 300px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    font-family: monospace;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .CodeMirror-focused {
+    border-color: var(--accent-blue);
+  }
+</style>
 <script>
   (function() {
     const storedTheme = localStorage.getItem('ghost-admin-theme') || localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -366,8 +383,26 @@
   </div>
   <div class="canvas">
     <div class="canvas-inner">
-      <div class="form-name-wrapper">
-        <input class="form-name-input" id="form-name" placeholder="Name your form blueprint..." value="">
+      <div class="form-name-wrapper" style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px;">
+        <input class="form-name-input" id="form-name" placeholder="Name your form blueprint..." value="" style="flex: 1; margin: 0; padding-bottom: 8px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Post Layout</label>
+            <select id="form-layout" style="width: 220px; padding: 10px 14px; font-size: 13.5px; font-family: inherit; font-weight: 500; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); outline: none; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+              <option value="default">Centered (Default)</option>
+              <option value="left">Float Left (Separate)</option>
+              <option value="right">Float Right (Separate)</option>
+              <option value="split_left">Split Card (Image Left)</option>
+              <option value="split_right">Split Card (Image Right)</option>
+              <option value="full">Full Width</option>
+            </select>
+        </div>
+      </div>
+      <div style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin: 0;">Custom CSS (Optional)</label>
+            <button class="btn btn-secondary" onclick="generateStarterCss()" style="padding: 4px 10px; font-size: 11px;">Generate Selectors</button>
+        </div>
+        <textarea id="custom-css" placeholder="/* Write your CSS here */&#10;form { border: none !important; }"></textarea>
       </div>
       <div class="drop-zone" id="drop-zone">
         <div class="placeholder" id="placeholder">Drag and drop widgets here from the panel</div>
@@ -398,6 +433,7 @@ const WIDGETS = [
 
 let fields = [];
 let formId = null;
+let cssEditor = null;
 
 function showToast(message, type = 'success') {
   if (!document.getElementById('fb-toast-style')) {
@@ -622,6 +658,8 @@ function updateMax(id, value) {
 
 async function saveForm() {
   const name = document.getElementById('form-name').value.trim();
+  const customCss = cssEditor ? cssEditor.getValue().trim() : '';
+  const layout = document.getElementById('form-layout').value;
   if (!name) {
     showToast('Please provide a form name.', 'error');
     return;
@@ -631,7 +669,7 @@ async function saveForm() {
     return;
   }
 
-  const body = { name, fields };
+  const body = { name, fields, customCss, layout };
   const method = formId ? 'PUT' : 'POST';
   const url = formId ? `/ghost/form-builder/api/forms/${formId}` : '/ghost/form-builder/api/forms';
 
@@ -663,6 +701,32 @@ function goBack() {
   }
 }
 
+function generateStarterCss() {
+  const cssVal = cssEditor ? cssEditor.getValue().trim() : '';
+  let currentVal = cssVal;
+  let generated = "/* Target form wrapper */\nform {\n  \n}\n\n";
+  
+  const uniqueFields = [...new Set(fields.map(f => f.label))].filter(Boolean);
+  
+  uniqueFields.forEach(label => {
+    if (label) {
+      generated += `/* Field: ${label} */\nform input[name="${label}"], \nform select[name="${label}"], \nform textarea[name="${label}"] {\n  \n}\n`;
+      generated += `form select[name="${label}_country_code"] {\n  width: auto !important;\n  flex-shrink: 0 !important;\n}\n\n`;
+    }
+  });
+  
+  generated += "/* Submit Button */\nform button[type=\"submit\"] {\n  \n}\n\n";
+  generated += "/* Reset Button */\nform button[type=\"reset\"] {\n  \n}\n";
+  
+  if (currentVal.length > 0) {
+    if (confirm("Replace your current CSS with the starter template?")) {
+      if (cssEditor) cssEditor.setValue(generated);
+    }
+  } else {
+    if (cssEditor) cssEditor.setValue(generated);
+  }
+}
+
 async function init() {
   const params = new URLSearchParams(location.search);
   formId = params.get('id');
@@ -673,6 +737,12 @@ async function init() {
   try {
     const form = await fetch(`/ghost/form-builder/api/forms/${formId}`).then(r => r.json());
     document.getElementById('form-name').value = form.name;
+    document.getElementById('form-layout').value = form.layout || 'default';
+    if (cssEditor) {
+      cssEditor.setValue(form.customCss || '');
+    } else {
+      document.getElementById('custom-css').value = form.customCss || '';
+    }
     // Map items using unique Date.now IDs to ensure no duplicates in the DOM
     fields = form.fields.map((f, i) => ({ 
       ...f, 
@@ -685,6 +755,24 @@ async function init() {
     showToast('Failed to load blueprint: ' + err.message, 'error');
   }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  cssEditor = CodeMirror.fromTextArea(document.getElementById('custom-css'), {
+    mode: "css",
+    lineNumbers: true,
+    theme: document.documentElement.className.includes('dark') ? 'material-darker' : 'default'
+  });
+  
+  // Tie editor theme to the overall document theme polling
+  setInterval(() => {
+    if (cssEditor) {
+      const isDark = document.documentElement.className.includes('dark');
+      if (cssEditor.getOption("theme") !== (isDark ? 'material-darker' : 'default')) {
+        cssEditor.setOption("theme", isDark ? 'material-darker' : 'default');
+      }
+    }
+  }, 1000);
+});
 
 init();
 </script>

@@ -78,6 +78,28 @@ module.exports = {
         internalApp.use('/ghost/form-builder', router);
         internalApp.use('/form-builder', router);
         
+        const serveEmbedJs = async (req, res) => {
+            try {
+                const fs = require('fs');
+                const formStore = require('./formStorage');
+                const forms = await formStore.listForms();
+                const layoutMap = {};
+                forms.forEach(f => layoutMap[f.id] = f.layout);
+                
+                let rawJs = fs.readFileSync(path.join(__dirname, '../ui/embed.js'), 'utf8');
+                rawJs = `window.__fbLayoutMap = ${JSON.stringify(layoutMap)};\n` + rawJs;
+                
+                res.setHeader('Content-Type', 'application/javascript');
+                res.send(rawJs);
+            } catch(e) {
+                console.error('[ghost-formbuilder] Failed to serve embed.js:', e);
+                res.status(500).send('console.error("Failed to load embed.js");');
+            }
+        };
+        
+        internalApp.get('/ghost/form-builder/ui/embed.js', serveEmbedJs);
+        internalApp.get('/form-builder/ui/embed.js', serveEmbedJs);
+
         // Serve UI assets from both paths
         internalApp.use('/ghost/form-builder/ui', localExpress.static(path.join(__dirname, '../ui')));
         internalApp.use('/form-builder/ui', localExpress.static(path.join(__dirname, '../ui')));
